@@ -5,12 +5,12 @@
 
 mergeInto(LibraryManager.library, {
 
-	ogvjs_callback_init_video: function(frameWidth, frameHeight,
-	                                    chromaWidth, chromaHeight,
-                                        fps,
-                                        picWidth, picHeight,
-                                        picX, picY,
-                                        displayWidth, displayHeight) {
+	ogvjs_callback_init_video: function (frameWidth, frameHeight,
+		chromaWidth, chromaHeight,
+		fps,
+		picWidth, picHeight,
+		picX, picY,
+		displayWidth, displayHeight) {
 		Module['videoFormat'] = {
 			'width': frameWidth,
 			'height': frameHeight,
@@ -27,31 +27,32 @@ mergeInto(LibraryManager.library, {
 		Module['loadedMetadata'] = true;
 	},
 
-	ogvjs_callback_frame: function(bufferY, strideY,
-	                               bufferCb, strideCb,
-	                               bufferCr, strideCr,
-	                               width, height,
-								   chromaWidth, chromaHeight,
-								   picWidth, picHeight,
-								   picX, picY,
-								   displayWidth, displayHeight) {
+	ogvjs_callback_frame: function (bufferY, strideY,
+		bufferCb, strideCb,
+		bufferCr, strideCr,
+		bufferA, strideA,
+		width, height,
+		chromaWidth, chromaHeight,
+		picWidth, picHeight,
+		picX, picY,
+		displayWidth, displayHeight) {
 
 		// Create typed array copies of the source buffers from the emscripten heap:
 		var HEAPU8 = Module['HEAPU8'],
 			format = Module['videoFormat'];
 
 		function copyAndTrim(buffer, stride, height, picX, picY, picWidth, picHeight, fill) {
-			var arr = copyByteArray(HEAPU8.subarray(buffer, buffer +  stride * height));
+			var arr = copyByteArray(HEAPU8.subarray(buffer, buffer + stride * height));
 
 			// Trim out anything outside the visible area
 			// Protected against green stripes in some codecs (VP9)
 			var x, y, ptr;
-			for (ptr = 0, y = 0; y < picY; y++, ptr += stride) {
+			for (ptr = 0, y = 0; y < picY; y++ , ptr += stride) {
 				for (x = 0; x < stride; x++) {
 					arr[ptr + x] = fill;
 				}
 			}
-			for (; y < picY + picHeight; y++, ptr += stride) {
+			for (; y < picY + picHeight; y++ , ptr += stride) {
 				for (x = 0; x < picX; x++) {
 					arr[ptr + x] = fill;
 				}
@@ -59,7 +60,7 @@ mergeInto(LibraryManager.library, {
 					arr[ptr + x] = fill;
 				}
 			}
-			for (; y < height; y++, ptr += stride) {
+			for (; y < height; y++ , ptr += stride) {
 				for (x = 0; x < stride; x++) {
 					arr[ptr + x] = fill;
 				}
@@ -75,7 +76,7 @@ mergeInto(LibraryManager.library, {
 		var chromaPicHeight = picHeight * chromaHeight / height;
 
 		var isOriginal = (picWidth === format['cropWidth'])
-					  && (picHeight === format['cropHeight']);
+			&& (picHeight === format['cropHeight']);
 		if (isOriginal) {
 			// This feels wrong, but in practice the WebM VP8 files I've found
 			// with non-square pixels list 1920x1080 in the WebM header for
@@ -116,8 +117,8 @@ mergeInto(LibraryManager.library, {
 			}
 		};
 	},
-	
-	ogvjs_callback_async_complete: function(ret, cpuTime) {
+
+	ogvjs_callback_async_complete: function (ret, cpuTime) {
 		var callback = Module.callbacks.shift();
 		Module['cpuTime'] += cpuTime;
 		callback(ret);

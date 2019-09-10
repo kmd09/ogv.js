@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -14,10 +15,11 @@
 #include "ogv-decoder-video.h"
 #include "ogv-thread-support.h"
 
-static vpx_codec_ctx_t    vpxContext;
+static vpx_codec_ctx_t vpxContext;
 static vpx_codec_iface_t *vpxDecoder;
 
-static void do_init(void) {
+static void do_init(void)
+{
 
 #ifdef OGV_VP9
 	vpxDecoder = vpx_codec_vp9_dx();
@@ -29,7 +31,8 @@ static void do_init(void) {
 #ifdef __EMSCRIPTEN_PTHREADS__
 	const int max_cores = 8; // max threads for UHD tiled decoding
 	int cores = emscripten_num_logical_cores();
-	if (cores > max_cores) {
+	if (cores > max_cores)
+	{
 		cores = max_cores;
 	}
 	cfg.threads = cores;
@@ -46,8 +49,10 @@ void do_destroy(void)
 	// should tear instance down, but meh
 }
 
-static void process_frame_decode(const char *data, size_t data_len) {
-	if (!data) {
+static void process_frame_decode(const char *data, size_t data_len)
+{
+	if (!data)
+	{
 		// NULL data signals syncing the decoder state
 		call_main_return(NULL, 1);
 		return;
@@ -61,14 +66,17 @@ static void process_frame_decode(const char *data, size_t data_len) {
 	call_main_return(NULL, 1);
 }
 
-static int process_frame_return(void *user_data) {
+static int process_frame_return(void *user_data)
+{
 	vpx_codec_iter_t iter = NULL;
 	vpx_image_t *image = NULL;
 	int foundImage = 0;
-	while ((image = vpx_codec_get_frame(&vpxContext, &iter))) {
+	while ((image = vpx_codec_get_frame(&vpxContext, &iter)))
+	{
 		// is it possible to get more than one at a time? ugh
 		// @fixme can we have multiples really? how does this worky
-		if (foundImage) {
+		if (foundImage)
+		{
 			// skip for now
 			continue;
 		}
@@ -77,7 +85,8 @@ static int process_frame_return(void *user_data) {
 		// image->h is inexplicably large for small sizes.
 		// don't both copying the extra, but make sure it's chroma-safe.
 		int height = image->d_h;
-		if ((height & 1) == 1) {
+		if ((height & 1) == 1)
+		{
 			// copy one extra row if need be
 			// not sure this is even possible
 			// but defend in depth
@@ -85,31 +94,33 @@ static int process_frame_return(void *user_data) {
 		}
 
 		int chromaWidth, chromaHeight;
-		switch(image->fmt) {
-			case VPX_IMG_FMT_I420:
-				chromaWidth = image->w >> 1;
-				chromaHeight = height >> 1;
-				break;
-			case VPX_IMG_FMT_I422:
-				chromaWidth = image->w >> 1;
-				chromaHeight = height;
-				break;
-			case VPX_IMG_FMT_I444:
-				chromaWidth = image->w;
-				chromaHeight = height;
-				break;
-			default:
-				//printf("Skipping frame with unknown picture type %d\n", (int)image->fmt);
-				return 0;
+		switch (image->fmt)
+		{
+		case VPX_IMG_FMT_I420:
+			chromaWidth = image->w >> 1;
+			chromaHeight = height >> 1;
+			break;
+		case VPX_IMG_FMT_I422:
+			chromaWidth = image->w >> 1;
+			chromaHeight = height;
+			break;
+		case VPX_IMG_FMT_I444:
+			chromaWidth = image->w;
+			chromaHeight = height;
+			break;
+		default:
+			//printf("Skipping frame with unknown picture type %d\n", (int)image->fmt);
+			return 0;
 		}
 		ogvjs_callback_frame(image->planes[0], image->stride[0],
-							 image->planes[1], image->stride[1],
-							 image->planes[2], image->stride[2],
-							 image->w, height,
-							 chromaWidth, chromaHeight,
-							 image->d_w, image->d_h, // crop size
-							 0, 0, // crop pos
-							 image->r_w, image->r_h); // render size
+												 image->planes[1], image->stride[1],
+												 image->planes[2], image->stride[2],
+												 image->planes[3], image->stride[3],
+												 image->w, height,
+												 chromaWidth, chromaHeight,
+												 image->d_w, image->d_h,	// crop size
+												 0, 0,										// crop pos
+												 image->r_w, image->r_h); // render size
 	}
 	return foundImage;
 }
